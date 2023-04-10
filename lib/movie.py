@@ -13,11 +13,22 @@ class Movie:
         # like a placeholder
         self.id = None
         self.title = title
-        self.year = year
+        self._year = year
 
     def __repr__(self):
         # repr fn will show this string instead of object location in memory
         return f'<Movie id={self.id} title={self.title} year={self.year} >'
+
+    def get_year(self):
+        return self._year
+    
+    def set_year(self, year):
+        if year >= 2000 and isinstance(year, int):
+            self._year = year
+        else:
+            print('That movie is too old and doesnt matter')
+    
+    year = property(get_year, set_year)
 
 # object relational mapping / ORM 
 # everytime i have a table in my db, there is a class i use in python to match up with that table
@@ -36,8 +47,15 @@ class Movie:
         # this gets commited right away
         CURSOR.execute(sql)
 
-    # take attributes from the instance and add it to our table
+    # function to make sure that the row youre trying to create does not already exist 
     def save(self):
+        if self.id:
+            self.update()
+        else:
+            self.create()
+
+    # take attributes from the instance and add it to our table
+    def create(self):
         sql = """
             INSERT INTO movies (title, year)
             VALUES (?, ?)
@@ -56,6 +74,7 @@ class Movie:
         # setting the id of the instance 
         self.id = CURSOR.execute('SELECT * FROM movies ORDER BY id DESC LIMIT 1').fetchone()[0]
 
+
     #we are looking to get all of the movies 
     @classmethod
     def fetch_all(cls):
@@ -73,10 +92,42 @@ class Movie:
             movie = Movie(movie_data[1], movie_data[2])
             movie.id = movie_data[0]
             movie_list.append(movie)
+
         return movie_list
 
+    # you can have it as a class method, make it take an id and delete it from the db based on the id
+    # or make it an instance method and call this on the instance and having it delete the instance
+    @classmethod
+    def destroy_class(cls, id):
+        # FIND AND DELETE THIS INSTANCE IN THE DATABASE
+        sql = """
+            DELETE FROM movies 
+            WHERE id = ?
+        """
+        # we usually want the second arg to be a list just incase we have more inputs
+        CURSOR.execute(sql, [id])
+        CONN.commit()
 
+    # the instance way:
+    def destroy_instance(self):
+        sql = """
+            DELETE FROM movies 
+            WHERE id = ?
+        """
+        CURSOR.execute(sql, [self.id])
+        CONN.commit()
+    
+    # update the row
+    def update(self):
+        sql = """
+            UPDATE movies
+            SET title =?, year = ? 
+            WHERE id = ?
+        """
+        # if we want to change only the yr or the title or both, this will allow us to do that
 
+        CURSOR.execute(sql, [self.title, self.year, self.id])
+        CONN.commit()    
 
 
 
